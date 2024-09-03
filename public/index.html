@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Transactions and Ethereum Prices</title>
+    <title>Crypto Transactions, Ethereum Prices, and Expenses</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +20,7 @@
             color: #333;
             margin-bottom: 20px;
         }
-        #form-container, #prices-container, #transactions-container {
+        #form-container, #prices-container, #transactions-container, #expenses-container {
             background-color: #fff;
             padding: 20px;
             border-radius: 8px;
@@ -29,13 +29,13 @@
             max-width: 600px;
             margin-bottom: 20px;
         }
-        #form-container input, #form-container button {
+        #form-container input, #form-container button, #expenses-container input, #expenses-container button {
             padding: 10px;
             font-size: 16px;
             margin-top: 10px;
             margin-bottom: 10px;
         }
-        .price-item, .transaction-item {
+        .price-item, .transaction-item, .expense-item {
             background-color: #f9f9f9;
             padding: 15px;
             margin-bottom: 10px;
@@ -49,7 +49,7 @@
     </style>
 </head>
 <body>
-    <h1>Crypto Transactions and Ethereum Prices</h1>
+    <h1>Crypto Transactions, Ethereum Prices, and Expenses</h1>
     
     <!-- Form to Fetch Transactions -->
     <div id="form-container">
@@ -63,6 +63,14 @@
 
     <!-- Container to Display Ethereum Prices -->
     <div id="prices-container"></div>
+
+    <!-- Form to Calculate Expenses -->
+    <div id="expenses-container">
+        <h2>Calculate Expenses</h2>
+        <input type="text" id="expense-address" placeholder="Enter Ethereum Address" required>
+        <button onclick="fetchExpenses()">Calculate Expenses</button>
+        <div id="expenses-result"></div>
+    </div>
 
     <script>
         // Function to Fetch Transactions
@@ -124,6 +132,37 @@
 
         // Fetch prices when the page loads
         window.onload = fetchPrices;
+
+        // Function to Calculate Expenses
+        async function fetchExpenses() {
+            const address = document.getElementById('expense-address').value;
+            if (!address) {
+                alert('Please enter an Ethereum address.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/expenses?address=${address}`);
+                const result = await response.json();
+                console.log('Response:', result); // Add this line for debugging
+
+                const expensesResult = document.getElementById('expenses-result');
+                expensesResult.innerHTML = ''; // Clear any existing content
+
+                if (result.error) {
+                    expensesResult.textContent = result.error;
+                } else {
+                    expensesResult.innerHTML = `
+                        <div class="expense-item">Total Expenses in ETH: ${result.totalExpensesInEth}</div>
+                        
+                    `;
+                }
+            } catch (error) {
+                console.error('Error calculating expenses:', error);
+                const expensesResult = document.getElementById('expenses-result');
+                expensesResult.textContent = 'Failed to calculate expenses.';
+            }
+        }
     </script>
 </body>
 </html>

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const Transaction = require('./models/Transaction');
+const Price = require('./models/Price'); 
 
 dotenv.config();
 
@@ -51,9 +52,6 @@ app.post('/api/transactions', async (req, res) => {
   }
 });
 
-
-const Price = require('./models/Price');
-
 // Function to fetch Ethereum price from CoinGecko
 async function fetchEthereumPrice() {
     try {
@@ -76,12 +74,53 @@ async function fetchEthereumPrice() {
 // Set an interval to fetch the price every 10 minutes
 setInterval(fetchEthereumPrice, 10 * 60 * 1000); // 10 minutes in milliseconds
 
+// Function to calculate expenses
+app.get('/api/expenses', async (req, res) => {
+    const { address } = req.query;
+  
+    if (!address) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+  
+    try {
+      // Fetch transactions for the provided address
+      const transactions = await Transaction.find({ address });
+  
+      if (transactions.length === 0) {
+        return res.status(404).json({ error: 'No transactions found for this address' });
+      }
+  
+      // Calculate total expenses (sum of value fields, assuming "value" is in Wei)
+      const totalExpensesWei = transactions.reduce((acc, tx) => acc + BigInt(tx.value), BigInt(0));
+      const totalExpensesEth = Number(totalExpensesWei) / 1e18; // Convert Wei to Ether
+  
+      // Fetch the latest Ethereum price in INR
+      const latestPrice = await Price.findOne().sort({ timestamp: -1 });
+  
+      if (!latestPrice) {
+        return res.status(404).json({ error: 'Ethereum price not found' });
+      }
+  
+      // Calculate the total expenses in INR
+      const totalExpensesInINR = totalExpensesEth * latestPrice.price;
+  
+      // Return the calculated expenses and current Ethereum price
+      res.status(200).json({
+        totalExpensesInEth: totalExpensesEth.toFixed(5),
+        totalExpensesInINR: totalExpensesInINR.toFixed(2),
+        ethPriceInINR: latestPrice.price,
+      });
+    } catch (error) {
+      console.error('Error calculating expenses:', error);
+      res.status(500).json({ error: 'Failed to calculate expenses' });
+    }
+  });
+  
 
 // Basic Route
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
-
 
 // Route to fetch all stored Ethereum prices
 app.get('/api/prices', async (req, res) => {
