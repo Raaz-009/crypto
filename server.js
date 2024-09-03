@@ -51,10 +51,49 @@ app.post('/api/transactions', async (req, res) => {
   }
 });
 
+
+const Price = require('./models/Price');
+
+// Function to fetch Ethereum price from CoinGecko
+async function fetchEthereumPrice() {
+    try {
+        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=inr');
+        const ethPriceInINR = response.data.ethereum.inr;
+
+        // Save the price to MongoDB
+        const newPrice = new Price({
+            currency: 'INR',
+            price: ethPriceInINR,
+        });
+
+        await newPrice.save();
+        console.log(`Ethereum price in INR: ${ethPriceInINR} saved to database.`);
+    } catch (error) {
+        console.error('Error fetching Ethereum price:', error);
+    }
+}
+
+// Set an interval to fetch the price every 10 minutes
+setInterval(fetchEthereumPrice, 10 * 60 * 1000); // 10 minutes in milliseconds
+
+
 // Basic Route
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
+
+
+// Route to fetch all stored Ethereum prices
+app.get('/api/prices', async (req, res) => {
+    try {
+      const prices = await Price.find().sort({ timestamp: -1 }); // Fetch all prices, sorted by the most recent
+      res.status(200).json(prices);
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+      res.status(500).json({ error: 'Failed to fetch prices' });
+    }
+  });
+  
 
 // Start the Server
 const PORT = process.env.PORT || 3000;
